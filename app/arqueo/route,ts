@@ -1,0 +1,134 @@
+'use client';
+
+import React, { useEffect, useState } from 'react';
+import Link from 'next/link';
+
+function soles(n: number) {
+  return `S/ ${Number(n || 0).toFixed(2)}`;
+}
+
+type Arqueo = {
+  id: string;
+  createdAt: string;
+  declarado: number;
+  sistema: number;
+  diferencia: number;
+};
+
+async function fetchJson<T>(url: string): Promise<T[]> {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return [];
+    const data = await res.json();
+    return Array.isArray(data) ? data : [];
+  } catch {
+    return [];
+  }
+}
+
+export default function ArqueoPage() {
+  const [sistema, setSistema] = useState(0);
+  const [rows, setRows] = useState<Arqueo[]>([]);
+  const [mostrar, setMostrar] = useState(false);
+  const [contado, setContado] = useState('');
+
+  const load = async () => {
+    const arqueos = await fetchJson<Arqueo>('/api/arqueo');
+    setRows(arqueos);
+
+    // Sistema del día desde ventas + caja
+    const [ventas, caja] = await Promise.all([
+      fetchJson<{ montoTotal: number; canal?: string; createdAt: string }>('/api/ventas'),
+      fetchJson<{ monto: number; createdAt?: string; tipo?: string }>('/api/caja'),
+    ]);
+
+    const day = new Date().toISOString().slice(0, 10);
+    const efectivoVentas = ventas
+      .filter((v) => String(v.createdAt || '').slice(0, 10) === day && v.canal === 'EFECTIVO')
+      .reduce((a, v) => a + Number(v.montoTotal || 0), 0);
+    const gastosHoy = caja
+      .filter((g) => String(g.createdAt || '').slice(0, 10) === day && (g.tipo === 'gasto' || !g.tipo))
+      .reduce((a, g) => a + Number(g.monto || 0), 0);
+
+    setSistema(Number((efectivoVentas - gastosHoy).toFixed(2)));
+  };
+
+  useEffect(() => {
+    load();
+    const id = setInterval(load, 3000);
+    return () => clearInterval(id);
+  }, []);
+
+  const guardar = async () => {
+    const n = Number(contado);
+    if (!Number.isFinite(n)) {
+      alert('Escribe cuánto hay en caja');
+      return;
+    }
+
+    await fetch('/api/arqueo', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        declarado: n,
+        sistema,
+        diferencia: Number((n - sistema).toFixed(2)),
+      }),
+    });
+
+    setContado('');
+    load();
+  };
+
+  return (
+    <div className="min-h-screen bg-[#070B14] text-white p-5">
+      <Link href="/" className="text-[12px] text-slate-400">← Resumen</Link>
+      <h1 className="text-[24px] font-semibold mt-1">Arqueo ciego</h1>
+      <p className="text-[13px] text-slate-400 mb-5">El cajero cuenta. El sistema compara después.</p>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-3xl">
+        <div className="bg-[#0B1220] border border-white/10 rounded-2xl p-4">
+          <p className="text-[13px] text-slate-400 mb-2">Lo que dice el sistema hoy (efectivo − gastos)</p>
+          <p className="text-[28px] font-semibold font-mono">
+            {mostrar ? soles(sistema) : '••••••'}
+          </p>
+          <button
+            onClick={() => setMostrar((v) => !v)}
+            className="mt-3 text-[12px] border border-white/15 rounded-lg px-3 py-1.5"
+          >
+            {mostrar ? 'Ocultar' : 'Mostrar al dueño'}
+          </button>
+        </div>
+
+        <div className="bg-[#0B1220] border border-white/10 rounded-2xl p-4">
+          <p className="text-[13px] text-slate-400 mb-2">¿Cuánto hay en el cajón?</p>
+          <input
+            value={contado}
+            onChange={(e) => setContado(e.target.value)}
+            type="number"
+            className="w-full h-11 rounded-lg bg-[#070B14] border border-white/10 px-3 font-mono"
+            placeholder="0.00"
+          />
+          <button onClick={guardar} className="mt-3 w-full h-10 rounded-lg bg-white text-black text-[13px] font-medium">
+            Cerrar arqueo
+          </button>
+        </div>
+      </div>
+
+      <div className="bg-[#0B1220] border border-white/10 rounded-2xl p-4 mt-5 max-w-3xl">
+        <p className="text-[14px] font-medium mb-3">Historial</p>
+        {rows.length === 0 && <p className="text-[13px] text-slate-500">Aún no hay arqueos.</p>}
+        {rows.map((r) => (
+          <div key={r.id || r.createdAt} className="flex justify-between border-t border-white/10 py-2 text-[13px]">
+            <span className="text-slate-400">{new Date(r.createdAt).toLocaleString('es-PE')}</span>
+            <span>Decl. {soles(r.declarado)}</span>
+            <span>Sist. {soles(r.sistema)}</span>
+            <span className={r.diferencia === 0 ? 'text-emerald-400' : 'text-red-400'}>
+              {r.diferencia >= 0 ? '+' : ''}{soles(r.diferencia)}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
