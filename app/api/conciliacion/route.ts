@@ -1,10 +1,12 @@
 import { NextResponse } from 'next/server';
-import db from '@/lib/db';
+import { all, run } from '@/lib/db';
+
+export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    const ids = db.prepare('SELECT ventaId FROM conciliacion_ids').all() as { ventaId: string }[];
-    const matches = db.prepare('SELECT * FROM conciliacion_matches').all();
+    const ids = await all<{ ventaId: string }>('SELECT "ventaId" FROM conciliacion_ids');
+    const matches = await all('SELECT * FROM conciliacion_matches');
     return NextResponse.json({
       ids: ids.map((r) => r.ventaId),
       matches,
@@ -19,13 +21,20 @@ export async function POST(request: Request) {
     const body = await request.json();
     const ids: string[] = Array.isArray(body.ids) ? body.ids.map(String) : [];
     for (const id of ids) {
-      db.prepare('INSERT OR IGNORE INTO conciliacion_ids (ventaId) VALUES (?)').run(id);
+      await run('INSERT INTO conciliacion_ids ("ventaId") VALUES (?) ON CONFLICT ("ventaId") DO NOTHING', [id]);
     }
     if (body.match && body.match.bancoRef && body.match.ventaId) {
-      db.prepare(
-        `INSERT OR REPLACE INTO conciliacion_matches (bancoRef, ventaId, monto) VALUES (?, ?, ?)`
-      ).run(String(body.match.bancoRef), String(body.match.ventaId), Number(body.match.monto || 0));
-      db.prepare('INSERT OR IGNORE INTO conciliacion_ids (ventaId) VALUES (?)').run(String(body.match.ventaId));
+      await run(
+        `INSERT INTO conciliacion_matches ("bancoRef", "ventaId", monto) VALUES (?, ?, ?)
+         ON CONFLICT ("bancoRef") DO UPDATE SET
+           "ventaId" = EXCLUDED."ventaId",
+           monto = EXCLUDED.monto`,
+        [String(body.match.bancoRef), String(body.match.ventaId), Number(body.match.monto || 0)]
+      );
+      await run(
+        'INSERT INTO conciliacion_ids ("ventaId") VALUES (?) ON CONFLICT ("ventaId") DO NOTHING',
+        [String(body.match.ventaId)]
+      );
     }
     return NextResponse.json({ ok: true });
   } catch (e) {

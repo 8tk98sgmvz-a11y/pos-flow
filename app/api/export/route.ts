@@ -1,15 +1,13 @@
 import { NextResponse } from 'next/server';
-import Database from 'better-sqlite3';
-import path from 'path';
 import * as XLSX from 'xlsx';
+import { all } from '@/lib/db';
 
-const dbPath = path.join(process.cwd(), 'retailos.db');
-const db = new Database(dbPath);
+export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    const ventas = db.prepare('SELECT * FROM ventas ORDER BY createdAt DESC').all();
-    const arqueos = db.prepare('SELECT * FROM arqueos ORDER BY createdAt DESC').all();
+    const ventas = await all('SELECT * FROM ventas ORDER BY "createdAt" DESC');
+    const arqueos = await all('SELECT * FROM arqueos ORDER BY "createdAt" DESC');
 
     const wb = XLSX.utils.book_new();
 

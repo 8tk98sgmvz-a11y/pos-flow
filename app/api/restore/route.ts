@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
-import fs from 'fs';
-import path from 'path';
+import { restoreDatabase } from '@/lib/db';
+
+export const dynamic = 'force-dynamic';
 
 export async function POST(request: Request) {
   try {
@@ -11,12 +12,18 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'No se envió archivo' }, { status: 400 });
     }
 
-    const buffer = Buffer.from(await file.arrayBuffer());
-    const dbPath = path.join(process.cwd(), 'retailos.db');
+    let data: unknown;
+    try {
+      data = JSON.parse(await file.text());
+    } catch {
+      return NextResponse.json(
+        { error: 'El archivo tiene que ser un backup JSON exportado desde Neon' },
+        { status: 400 }
+      );
+    }
 
-    fs.writeFileSync(dbPath, buffer);
-
-    return NextResponse.json({ ok: true, message: 'Base de datos restaurada. Reinicia el servidor.' });
+    await restoreDatabase(data);
+    return NextResponse.json({ ok: true, message: 'Base de datos restaurada en Neon.' });
   } catch (e) {
     return NextResponse.json({ error: String(e) }, { status: 500 });
   }

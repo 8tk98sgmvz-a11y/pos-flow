@@ -1,28 +1,13 @@
 import { NextResponse } from 'next/server';
-import Database from 'better-sqlite3';
-import path from 'path';
+import { all, get, run } from '@/lib/db';
 
-const dbPath = path.join(process.cwd(), 'retailos.db');
-const db = new Database(dbPath);
-
-db.exec(`
-  CREATE TABLE IF NOT EXISTS productos (
-    id TEXT PRIMARY KEY,
-    nombre TEXT NOT NULL,
-    precio REAL NOT NULL,
-    costo REAL NOT NULL DEFAULT 0,
-    stock REAL NOT NULL DEFAULT 0,
-    sku TEXT,
-    imagen TEXT,
-    createdAt TEXT NOT NULL
-  );
-`);
+export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    const rows = db
-      .prepare('SELECT id, nombre, precio, costo, stock, sku, createdAt FROM productos ORDER BY createdAt DESC')
-      .all();
+    const rows = await all(
+      'SELECT id, nombre, precio, costo, stock, sku, "createdAt" FROM productos ORDER BY "createdAt" DESC'
+    );
     return NextResponse.json(rows);
   } catch (e) {
     return NextResponse.json({ error: String(e) }, { status: 500 });
@@ -45,16 +30,18 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, error: 'Nombre obligatorio' }, { status: 400 });
     }
 
-    const existing = db.prepare('SELECT id FROM productos WHERE id = ?').get(id);
+    const existing = await get('SELECT id FROM productos WHERE id = ?', [id]);
     if (existing) {
-      db.prepare(
-        `UPDATE productos SET nombre = ?, precio = ?, costo = ?, stock = ?, sku = ?, imagen = ? WHERE id = ?`
-      ).run(nombre, precio, costo, stock, sku, imagen, id);
+      await run(
+        `UPDATE productos SET nombre = ?, precio = ?, costo = ?, stock = ?, sku = ?, imagen = ? WHERE id = ?`,
+        [nombre, precio, costo, stock, sku, imagen, id]
+      );
     } else {
-      db.prepare(
-        `INSERT INTO productos (id, nombre, precio, costo, stock, sku, imagen, createdAt)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-      ).run(id, nombre, precio, costo, stock, sku, imagen, createdAt);
+      await run(
+        `INSERT INTO productos (id, nombre, precio, costo, stock, sku, imagen, "createdAt")
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [id, nombre, precio, costo, stock, sku, imagen, createdAt]
+      );
     }
 
     return NextResponse.json({ ok: true, id });

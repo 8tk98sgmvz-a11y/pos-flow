@@ -1,28 +1,16 @@
 import { NextResponse } from 'next/server';
-import db from '@/lib/db';
+import { all, run } from '@/lib/db';
 
-// Asegurar que la tabla exista (por si acaso)
-db.exec(`
-  CREATE TABLE IF NOT EXISTS cuentas_por_cobrar (
-    id TEXT PRIMARY KEY,
-    createdAt TEXT NOT NULL,
-    cliente TEXT NOT NULL,
-    descripcion TEXT,
-    monto REAL NOT NULL,
-    estado TEXT NOT NULL DEFAULT 'ABIERTA',
-    ventaId TEXT,
-    telefono TEXT
-  );
-`);
+export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
   try {
     const estado = new URL(request.url).searchParams.get('estado');
     const rows = estado
-      ? db
-          .prepare(`SELECT * FROM cuentas_por_cobrar WHERE estado = ? ORDER BY createdAt DESC`)
-          .all(estado.toUpperCase())
-      : db.prepare(`SELECT * FROM cuentas_por_cobrar ORDER BY createdAt DESC`).all();
+      ? await all(`SELECT * FROM cuentas_por_cobrar WHERE estado = ? ORDER BY "createdAt" DESC`, [
+          estado.toUpperCase(),
+        ])
+      : await all(`SELECT * FROM cuentas_por_cobrar ORDER BY "createdAt" DESC`);
     return NextResponse.json(rows);
   } catch (e) {
     return NextResponse.json({ error: String(e) }, { status: 500 });
@@ -42,7 +30,7 @@ export async function POST(request: Request) {
     const telefono = body.telefono || null;
 
     if (body.id && telefono !== null && monto <= 0 && !cliente && !descripcion) {
-      db.prepare(`UPDATE cuentas_por_cobrar SET telefono = ? WHERE id = ?`).run(String(telefono), body.id);
+      await run(`UPDATE cuentas_por_cobrar SET telefono = ? WHERE id = ?`, [String(telefono), body.id]);
       return NextResponse.json({ ok: true, id: body.id });
     }
 
@@ -50,11 +38,20 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, error: 'Monto inválido' }, { status: 400 });
     }
 
-    db.prepare(
-      `INSERT OR REPLACE INTO cuentas_por_cobrar 
-       (id, createdAt, cliente, descripcion, monto, estado, ventaId, telefono) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-    ).run(id, createdAt, cliente || 'Cliente', descripcion, monto, estado, ventaId, telefono);
+    await run(
+      `INSERT INTO cuentas_por_cobrar
+       (id, "createdAt", cliente, descripcion, monto, estado, "ventaId", telefono)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT (id) DO UPDATE SET
+         "createdAt" = EXCLUDED."createdAt",
+         cliente = EXCLUDED.cliente,
+         descripcion = EXCLUDED.descripcion,
+         monto = EXCLUDED.monto,
+         estado = EXCLUDED.estado,
+         "ventaId" = EXCLUDED."ventaId",
+         telefono = EXCLUDED.telefono`,
+      [id, createdAt, cliente || 'Cliente', descripcion, monto, estado, ventaId, telefono]
+    );
 
     return NextResponse.json({ ok: true, id });
   } catch (e) {
@@ -69,14 +66,14 @@ export async function PATCH(request: Request) {
     if (!id) return NextResponse.json({ ok: false, error: 'Falta id' }, { status: 400 });
 
     if (body.telefono !== undefined) {
-      db.prepare(`UPDATE cuentas_por_cobrar SET telefono = ? WHERE id = ?`).run(
+      await run(`UPDATE cuentas_por_cobrar SET telefono = ? WHERE id = ?`, [
         String(body.telefono || '').replace(/\D/g, ''),
-        id
-      );
+        id,
+      ]);
     }
     if (body.estado) {
       const estado = String(body.estado).toUpperCase();
-      db.prepare(`UPDATE cuentas_por_cobrar SET estado = ? WHERE id = ?`).run(estado, id);
+      await run(`UPDATE cuentas_por_cobrar SET estado = ? WHERE id = ?`, [estado, id]);
     }
 
     return NextResponse.json({ ok: true });

@@ -1,27 +1,7 @@
 import { NextResponse } from 'next/server';
-import Database from 'better-sqlite3';
-import path from 'path';
+import { all, run } from '@/lib/db';
 
-const dbPath = path.join(process.cwd(), 'retailos.db');
-const db = new Database(dbPath);
-
-db.exec(`
-  CREATE TABLE IF NOT EXISTS gastos (
-    id TEXT PRIMARY KEY,
-    descripcion TEXT NOT NULL,
-    monto REAL NOT NULL,
-    canal TEXT NOT NULL DEFAULT 'EFECTIVO',
-    createdAt TEXT NOT NULL
-  );
-
-  CREATE TABLE IF NOT EXISTS ingresos (
-    id TEXT PRIMARY KEY,
-    descripcion TEXT NOT NULL,
-    monto REAL NOT NULL,
-    canal TEXT NOT NULL DEFAULT 'EFECTIVO',
-    createdAt TEXT NOT NULL
-  );
-`);
+export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
   try {
@@ -29,21 +9,21 @@ export async function GET(request: Request) {
     const tipo = searchParams.get('tipo');
 
     if (tipo === 'gastos') {
-      const rows = db.prepare('SELECT * FROM gastos ORDER BY createdAt DESC').all();
+      const rows = await all('SELECT * FROM gastos ORDER BY "createdAt" DESC');
       return NextResponse.json(rows);
     }
     if (tipo === 'ingresos') {
-      const rows = db.prepare('SELECT * FROM ingresos ORDER BY createdAt DESC').all();
+      const rows = await all('SELECT * FROM ingresos ORDER BY "createdAt" DESC');
       return NextResponse.json(rows);
     }
 
     type CajaRow = Record<string, unknown> & { tipo: 'gasto' | 'ingreso'; createdAt?: string };
-    const gastos = (db.prepare('SELECT * FROM gastos ORDER BY createdAt DESC').all() as Array<Record<string, unknown>>).map(
+    const gastos = (await all('SELECT * FROM gastos ORDER BY "createdAt" DESC')).map(
       (r) => ({ ...r, tipo: 'gasto' as const })
     ) as CajaRow[];
-    const ingresos = (
-      db.prepare('SELECT * FROM ingresos ORDER BY createdAt DESC').all() as Array<Record<string, unknown>>
-    ).map((r) => ({ ...r, tipo: 'ingreso' as const })) as CajaRow[];
+    const ingresos = (await all('SELECT * FROM ingresos ORDER BY "createdAt" DESC')).map(
+      (r) => ({ ...r, tipo: 'ingreso' as const })
+    ) as CajaRow[];
     const rows = [...gastos, ...ingresos].sort((a, b) =>
       String(b.createdAt || '').localeCompare(String(a.createdAt || ''))
     );
@@ -67,14 +47,18 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, error: 'Monto inválido' }, { status: 400 });
     }
 
+    const upsert = `INSERT INTO %TABLE% (id, descripcion, monto, canal, "createdAt")
+      VALUES (?, ?, ?, ?, ?)
+      ON CONFLICT (id) DO UPDATE SET
+        descripcion = EXCLUDED.descripcion,
+        monto = EXCLUDED.monto,
+        canal = EXCLUDED.canal,
+        "createdAt" = EXCLUDED."createdAt"`;
+
     if (tipo === 'gasto') {
-      db.prepare(
-        `INSERT OR REPLACE INTO gastos (id, descripcion, monto, canal, createdAt) VALUES (?, ?, ?, ?, ?)`
-      ).run(id, descripcion, monto, canal, createdAt);
+      await run(upsert.replace('%TABLE%', 'gastos'), [id, descripcion, monto, canal, createdAt]);
     } else if (tipo === 'ingreso') {
-      db.prepare(
-        `INSERT OR REPLACE INTO ingresos (id, descripcion, monto, canal, createdAt) VALUES (?, ?, ?, ?, ?)`
-      ).run(id, descripcion, monto, canal, createdAt);
+      await run(upsert.replace('%TABLE%', 'ingresos'), [id, descripcion, monto, canal, createdAt]);
     } else {
       return NextResponse.json({ ok: false, error: 'Tipo debe ser gasto o ingreso' }, { status: 400 });
     }

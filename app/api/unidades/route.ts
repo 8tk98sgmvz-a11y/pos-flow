@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
-import db from '@/lib/db';
+import { all, get, run } from '@/lib/db';
+
+export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
   try {
@@ -7,18 +9,17 @@ export async function GET(request: Request) {
     const codigo = String(searchParams.get('codigo') || '').trim();
     const sku = String(searchParams.get('sku') || '').trim();
     if (codigo) {
-      const row = db
-        .prepare(`SELECT * FROM unidades WHERE lower(codigo) = lower(?) LIMIT 1`)
-        .get(codigo);
+      const row = await get(`SELECT * FROM unidades WHERE lower(codigo) = lower(?) LIMIT 1`, [codigo]);
       return NextResponse.json(row ? [row] : []);
     }
     if (sku) {
-      const rows = db
-        .prepare(`SELECT * FROM unidades WHERE lower(sku) = lower(?) ORDER BY createdAt DESC`)
-        .all(sku);
+      const rows = await all(
+        `SELECT * FROM unidades WHERE lower(sku) = lower(?) ORDER BY "createdAt" DESC`,
+        [sku]
+      );
       return NextResponse.json(rows);
     }
-    const rows = db.prepare('SELECT * FROM unidades ORDER BY createdAt DESC').all();
+    const rows = await all('SELECT * FROM unidades ORDER BY "createdAt" DESC');
     return NextResponse.json(rows);
   } catch (e) {
     return NextResponse.json({ error: String(e) }, { status: 500 });
@@ -33,9 +34,10 @@ export async function POST(request: Request) {
     if (!codigo || !sku) {
       return NextResponse.json({ ok: false, error: 'SKU y código obligatorios' }, { status: 400 });
     }
-    const dup = db
-      .prepare('SELECT * FROM unidades WHERE lower(codigo) = lower(?)')
-      .get(codigo) as { sku?: string; estado?: string } | undefined;
+    const dup = await get<{ sku?: string; estado?: string }>(
+      'SELECT * FROM unidades WHERE lower(codigo) = lower(?)',
+      [codigo]
+    );
     if (dup) {
       const msg =
         dup.estado === 'VENDIDA'
@@ -45,10 +47,11 @@ export async function POST(request: Request) {
     }
     const id = body.id || `u-${Date.now()}`;
     const createdAt = body.createdAt || new Date().toISOString();
-    db.prepare(
-      `INSERT INTO unidades (id, sku, codigo, estado, createdAt, vendidaAt) VALUES (?, ?, ?, 'EN_TIENDA', ?, NULL)`
-    ).run(id, sku, codigo, createdAt);
-    const row = db.prepare('SELECT * FROM unidades WHERE id = ?').get(id);
+    await run(
+      `INSERT INTO unidades (id, sku, codigo, estado, "createdAt", "vendidaAt") VALUES (?, ?, ?, 'EN_TIENDA', ?, NULL)`,
+      [id, sku, codigo, createdAt]
+    );
+    const row = await get('SELECT * FROM unidades WHERE id = ?', [id]);
     return NextResponse.json(row);
   } catch (e) {
     return NextResponse.json({ ok: false, error: String(e) }, { status: 500 });
@@ -61,10 +64,11 @@ export async function PATCH(request: Request) {
     const codigo = String(body.codigo || '').trim();
     if (!codigo) return NextResponse.json({ ok: false, error: 'Falta código' }, { status: 400 });
     const vendidaAt = new Date().toISOString();
-    db.prepare(
-      `UPDATE unidades SET estado = 'VENDIDA', vendidaAt = ? WHERE lower(codigo) = lower(?) AND estado = 'EN_TIENDA'`
-    ).run(vendidaAt, codigo);
-    const row = db.prepare('SELECT * FROM unidades WHERE lower(codigo) = lower(?)').get(codigo);
+    await run(
+      `UPDATE unidades SET estado = 'VENDIDA', "vendidaAt" = ? WHERE lower(codigo) = lower(?) AND estado = 'EN_TIENDA'`,
+      [vendidaAt, codigo]
+    );
+    const row = await get('SELECT * FROM unidades WHERE lower(codigo) = lower(?)', [codigo]);
     return NextResponse.json(row || { ok: true });
   } catch (e) {
     return NextResponse.json({ error: String(e) }, { status: 500 });

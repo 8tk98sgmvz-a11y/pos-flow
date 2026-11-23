@@ -1,22 +1,16 @@
 import { NextResponse } from 'next/server';
-import fs from 'fs';
-import path from 'path';
+import { dumpDatabase } from '@/lib/db';
+
+export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    const dbPath = path.join(process.cwd(), 'retailos.db');
-
-    if (!fs.existsSync(dbPath)) {
-      return NextResponse.json({ error: 'Base de datos no encontrada' }, { status: 404 });
-    }
-
-    const file = fs.readFileSync(dbPath);
-
-    return new NextResponse(file, {
+    const data = await dumpDatabase();
+    return new NextResponse(JSON.stringify(data), {
       status: 200,
       headers: {
-        'Content-Type': 'application/octet-stream',
-        'Content-Disposition': 'attachment; filename="retailos-backup.db"',
+        'Content-Type': 'application/json',
+        'Content-Disposition': 'attachment; filename="retailos-backup.json"',
       },
     });
   } catch (e) {
