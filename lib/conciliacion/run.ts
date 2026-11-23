@@ -24,9 +24,8 @@ export async function runConciliacion(csvTexto?: string) {
       id: v.id,
       montoTotal: Number(v.montoTotal),
       fechaCreacion: new Date(v.createdAt),
-      canal: v.canal,
       idempotencyKey: v.idempotencyKey,
-      estado: 'PENDIENTE',
+      estado: 'PENDING',
     }));
 
   console.log('LEDGER PENDIENTES', delLedger.length, delLedger);

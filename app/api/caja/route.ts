@@ -37,12 +37,13 @@ export async function GET(request: Request) {
       return NextResponse.json(rows);
     }
 
+    type CajaRow = Record<string, unknown> & { tipo: 'gasto' | 'ingreso'; createdAt?: string };
     const gastos = (db.prepare('SELECT * FROM gastos ORDER BY createdAt DESC').all() as Array<Record<string, unknown>>).map(
-      (r) => ({ ...r, tipo: 'gasto' })
-    );
+      (r) => ({ ...r, tipo: 'gasto' as const })
+    ) as CajaRow[];
     const ingresos = (
       db.prepare('SELECT * FROM ingresos ORDER BY createdAt DESC').all() as Array<Record<string, unknown>>
-    ).map((r) => ({ ...r, tipo: 'ingreso' }));
+    ).map((r) => ({ ...r, tipo: 'ingreso' as const })) as CajaRow[];
     const rows = [...gastos, ...ingresos].sort((a, b) =>
       String(b.createdAt || '').localeCompare(String(a.createdAt || ''))
     );

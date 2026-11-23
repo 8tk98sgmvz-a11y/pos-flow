@@ -31,7 +31,10 @@ interface Sale {
 interface Customer {
   id: string;
   name: string;
+  phone: string;
   balance: number;
+  lastPurchaseAt: string;
+  lastReminderAt: string | null;
 }
 
 interface CashEntry {
@@ -71,6 +74,8 @@ interface StoreContextType {
   updateQty: (productId: string, qty: number) => void;
   removeFromCart: (productId: string) => void;
   checkout: (data: { paymentMethod: string; customerId?: string; customerName?: string; yape?: any }) => { ok: boolean; saleId?: string; error?: string };
+  recordReminder: (id: string) => void;
+  payCredit: (id: string, amount: number) => void;
 }
 
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
@@ -80,7 +85,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   const [sales, setSales] = useState<Sale[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([
-    { id: "c1", name: "Cliente Mostrador", balance: 0 }
+    { id: "c1", name: "Cliente Mostrador", phone: "", balance: 0, lastPurchaseAt: "", lastReminderAt: null }
   ]);
   const [cashHistory, setCashHistory] = useState<CashEntry[]>([]);
   const [serials, setSerials] = useState<string[]>([]);
@@ -204,6 +209,20 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     return { ok: true, saleId: newSale.id };
   };
 
+  const recordReminder = (id: string) => {
+    const at = new Date().toISOString();
+    setCustomers((prev) => prev.map((c) => (c.id === id ? { ...c, lastReminderAt: at } : c)));
+  };
+
+  const payCredit = (id: string, amount: number) => {
+    if (!Number.isFinite(amount) || amount <= 0) return;
+    setCustomers((prev) =>
+      prev.map((c) =>
+        c.id === id ? { ...c, balance: Math.max(0, +(c.balance - amount).toFixed(2)) } : c
+      )
+    );
+  };
+
   return (
     <StoreContext.Provider
       value={{
@@ -226,6 +245,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         updateQty,
         removeFromCart,
         checkout,
+        recordReminder,
+        payCredit,
       }}
     >
       {children}

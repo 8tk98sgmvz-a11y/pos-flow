@@ -18,7 +18,7 @@ const jetbrains = JetBrains_Mono({
 export const metadata: Metadata = {
   title: "POS Flow",
   description:
-    "Punto de venta profesional con antifraude, catálogo, inteligencia comercial y garantías digitales.",
+    "Punto de venta profesional con catálogo, inteligencia comercial y garantías digitales.",
 };
 
 export default function RootLayout({

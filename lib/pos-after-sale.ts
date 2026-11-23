@@ -9,15 +9,16 @@ export function runAfterSale(items: AfterSaleItem[]) {
     const { registrarGarantia } = await import('@/lib/garantias');
     await Promise.all(
       items.map(async (item) => {
-        if (!item.sku) return;
+        const sku = item.sku;
+        if (!sku) return;
         await isolateAsync(undefined, async () => {
-          const disponibles = await disponiblesPorSku(item.sku as string);
+          const disponibles = await disponiblesPorSku(sku);
           const take = disponibles.slice(0, item.quantity);
           await Promise.all(
             take.map(async (u) => {
               await isolateAsync(null, () => marcarVendida(u.codigo));
               await isolateAsync(undefined, () =>
-                registrarGarantia({ codigo: u.codigo, sku: item.sku, producto: item.nombre })
+                registrarGarantia({ codigo: u.codigo, sku, producto: item.nombre })
               );
             })
           );

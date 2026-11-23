@@ -1,9 +1,9 @@
 import type {
-    MovimientoBancario,
-    VentaPendiente,
-    MatchResultado,
-    InformeConciliacion,
-  } from './types';
+  TransaccionBanco,
+  VentaPendiente,
+  ResultadoMatch,
+  InformeConciliacion,
+} from './types';
   import { toCents } from './money';
   
   const WINDOW_MS = 5 * 60 * 1000;
@@ -13,11 +13,11 @@ import type {
   }
   
   export function conciliarMovimientos(
-    bancos: MovimientoBancario[],
+    bancos: TransaccionBanco[],
     ventas: VentaPendiente[]
   ): InformeConciliacion {
     const usadas = new Set<string>();
-    const matches: MatchResultado[] = [];
+    const matches: ResultadoMatch[] = [];
   
     const ordenadas = [...ventas].sort(
       (a, b) => a.fechaCreacion.getTime() - b.fechaCreacion.getTime()
@@ -74,7 +74,10 @@ import type {
         .map((m) => m.banco),
       advertencias: matches.filter((m) => m.estado === 'MATCHED_WITH_WARNING'),
       resumen: {
+        bancos: bancos.length,
+        ventasPendientes: ventas.length,
         matched: matches.filter((m) => m.estado === 'MATCHED').length,
+        matchedConAdvertencia: matches.filter((m) => m.estado === 'MATCHED_WITH_WARNING').length,
         unidentified,
         ventasHuérfanas: ventasSinBanco.length,
       },

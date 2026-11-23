@@ -36,7 +36,7 @@ export function SerialTracker({ quantity, serials, onChange }: SerialTrackerProp
     <div className="space-y-3 mt-4 p-4 rounded-2xl apple-glass-card border border-white/10">
       <div className="flex items-center justify-between">
         <label className="text-xs font-semibold text-emerald-400 uppercase tracking-wider">
-          Control Antifraude: Registro de Series / IMEIs Únicos
+          Registro de Series / IMEIs Únicos
         </label>
         <span className="text-xs text-slate-400">
         {serials.filter(Boolean).length}
@@ -48,7 +48,9 @@ export function SerialTracker({ quantity, serials, onChange }: SerialTrackerProp
           <div key={index} className="flex items-center gap-2">
             <span className="text-xs text-slate-500 w-16">U. {index + 1}</span>
             <input
-              ref={(el) => (inputRefs.current[index] = el)}
+              ref={(el) => {
+                inputRefs.current[index] = el;
+              }}
               type="text"
               value={serials[index] || ""}
               onChange={(e) => handleChange(index, e.target.value)}

@@ -37,7 +37,9 @@ export default function ArqueoPage() {
   const load = async () => {
     const [arqueos, resumenRes] = await Promise.all([
       fetchJson<Arqueo>('/api/arqueo'),
-      fetch('/api/resumen', { cache: 'no-store' }).then((r) => (r.ok ? r.json() : {})).catch(() => ({})),
+      fetch('/api/resumen', { cache: 'no-store' })
+        .then((r) => (r.ok ? r.json() : {}))
+        .catch(() => ({})) as Promise<{ sistema?: number }>,
     ]);
     const last = arqueos[0] || null;
     setUltimo(last);
