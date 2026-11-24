@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { ReportesShell } from '@/components/dashboard/reportes-shell';
-import { Badge, Button, ButtonLink, Card } from '@/components/ui';
+import { Badge, Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow, Text } from '@/components/ui';
 import { onLive } from '@/lib/live';
 
 type Reporte = {
@@ -42,52 +42,36 @@ export default function ReportesPage() {
 
   return (
     <ReportesShell>
-      <ButtonLink href="/" variant="ghost" className="text-[12px] h-auto px-0 font-normal text-slate-400">
-        ← Resumen
-      </ButtonLink>
-      <h1 className="text-[24px] font-semibold mt-1">Reportes por producto</h1>
-      <p className="text-[13px] text-slate-400 mb-5">Qué se vende más y con qué margen</p>
+      <Text variant="caption" className="mb-ds-5">
+        Qué se vende más y con qué margen
+      </Text>
 
-      <Card className="overflow-hidden p-0">
-        <table className="w-full text-[13px]">
-          <thead className="bg-white/5">
-            <tr>
-              <th className="text-left p-3">Producto</th>
-              <th className="text-right p-3">Unidades</th>
-              <th className="text-right p-3">Total</th>
-              <th className="text-right p-3">Costo</th>
-              <th className="text-right p-3">Margen</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading && (
-              <tr>
-                <td colSpan={5} className="p-4 text-center text-slate-500">
-                  Cargando…
-                </td>
-              </tr>
-            )}
-            {!loading && data.length === 0 && (
-              <tr>
-                <td colSpan={5} className="p-4 text-center text-slate-500">
-                  Sin datos
-                </td>
-              </tr>
-            )}
-            {data.map((r, i) => (
-              <tr key={i} className="border-t border-white/10">
-                <td className="p-3">{r.producto}</td>
-                <td className="p-3 text-right">{r.unidades}</td>
-                <td className="p-3 text-right">{soles(r.total)}</td>
-                <td className="p-3 text-right">{soles(r.costo)}</td>
-                <td className="p-3 text-right">
-                  <Badge variant={r.margen >= 0 ? 'success' : 'danger'}>{soles(r.margen)}</Badge>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </Card>
+      <Table>
+        <TableHeader>
+          <tr>
+            <TableHead>Producto</TableHead>
+            <TableHead className="text-right">Unidades</TableHead>
+            <TableHead className="text-right">Total</TableHead>
+            <TableHead className="text-right">Costo</TableHead>
+            <TableHead className="text-right">Margen</TableHead>
+          </tr>
+        </TableHeader>
+        <TableBody>
+          {loading && <TableEmpty colSpan={5}>Cargando…</TableEmpty>}
+          {!loading && data.length === 0 && <TableEmpty colSpan={5}>Sin datos</TableEmpty>}
+          {data.map((r, i) => (
+            <TableRow key={i}>
+              <TableCell>{r.producto}</TableCell>
+              <TableCell className="text-right">{r.unidades}</TableCell>
+              <TableCell className="text-right">{soles(r.total)}</TableCell>
+              <TableCell className="text-right">{soles(r.costo)}</TableCell>
+              <TableCell className="text-right">
+                <Badge variant={r.margen >= 0 ? 'success' : 'danger'}>{soles(r.margen)}</Badge>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
     </ReportesShell>
   );
 }

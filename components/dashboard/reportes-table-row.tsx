@@ -1,3 +1,5 @@
+import { Badge, TableCell, TableRow } from '@/components/ui';
+
 export function ReportesTableRow({
   producto,
   unidades,
@@ -14,14 +16,14 @@ export function ReportesTableRow({
   margenPositivo: boolean;
 }) {
   return (
-    <tr className="border-t border-white/10">
-      <td className="p-3">{producto}</td>
-      <td className="p-3 text-right">{unidades}</td>
-      <td className="p-3 text-right">{total}</td>
-      <td className="p-3 text-right">{costo}</td>
-      <td className={`p-3 text-right ${margenPositivo ? 'text-emerald-400' : 'text-red-400'}`}>
-        {margen}
-      </td>
-    </tr>
+    <TableRow>
+      <TableCell>{producto}</TableCell>
+      <TableCell className="text-right">{unidades}</TableCell>
+      <TableCell className="text-right">{total}</TableCell>
+      <TableCell className="text-right">{costo}</TableCell>
+      <TableCell className="text-right">
+        <Badge variant={margenPositivo ? 'success' : 'danger'}>{margen}</Badge>
+      </TableCell>
+    </TableRow>
   );
 }

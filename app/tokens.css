@@ -1,6 +1,6 @@
 /* Design tokens — dark, minimal, Apple-inspired.
-   Source of truth for color, type, space, radius, and shadow.
-   Pages are not wired yet; consume via Tailwind (primary, success, ds-*) or var(--ds-*). */
+   Única fuente de color, tipo, espacio, radio y sombra.
+   Se consumen con Tailwind: bg-surface, text-title-2, p-ds-4, rounded-ds-xl, shadow-ds-sm. */
 
 :root {
   color-scheme: dark;

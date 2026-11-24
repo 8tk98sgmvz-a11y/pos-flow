@@ -1,3 +1,5 @@
+import { Text } from '@/components/ui';
+
 export function PosCartLine({
   nombre,
   quantity,
@@ -8,11 +10,13 @@ export function PosCartLine({
   precio: number;
 }) {
   return (
-    <div className="flex justify-between text-[13px]">
-      <span>
+    <div className="flex justify-between gap-ds-2">
+      <Text as="span" variant="caption">
         {nombre} ×{quantity}
-      </span>
-      <span>S/ {(precio * quantity).toFixed(2)}</span>
+      </Text>
+      <Text as="span" variant="caption" className="text-foreground">
+        S/ {(precio * quantity).toFixed(2)}
+      </Text>
     </div>
   );
 }

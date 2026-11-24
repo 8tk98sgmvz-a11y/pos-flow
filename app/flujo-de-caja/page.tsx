@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { FlujoDateRange } from '@/components/dashboard/flujo-date-range';
 import { FlujoPageHeader } from '@/components/dashboard/flujo-page-header';
 import { FlujoShell } from '@/components/dashboard/flujo-shell';
-import { Badge, Button, Card } from '@/components/ui';
+import { Badge, Button, Card, Text } from '@/components/ui';
 import { onLive } from '@/lib/live';
 import { leerPendientes } from '@/lib/optimistic';
 import { cuadrarVentas, diaNegocio, esFiado, money } from '@/lib/money';
@@ -112,7 +112,7 @@ export default function FlujoCajaPage() {
         }
       />
 
-      <div className="flex flex-wrap gap-2 mb-4">
+      <div className="flex flex-wrap gap-ds-2 mb-ds-4">
         {(
           [
             ['hoy', 'Hoy'],
@@ -125,7 +125,7 @@ export default function FlujoCajaPage() {
           <Button
             key={id}
             variant={filtro === id ? 'primary' : 'ghost'}
-            className="px-3 py-1.5 h-auto text-[12px] font-medium"
+            className="px-ds-3 h-9 text-caption font-medium"
             onClick={() => setFiltro(id)}
           >
             {label}
@@ -137,30 +137,40 @@ export default function FlujoCajaPage() {
         <FlujoDateRange desde={desde} hasta={hasta} onDesde={setDesde} onHasta={setHasta} />
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5 max-w-3xl">
-        <Card className="p-4">
-          <p className="text-caption text-muted">Entradas cobradas</p>
-          <p className="text-[22px] font-semibold text-success mt-1">S/ {totales.entradas.toFixed(2)}</p>
-          <p className="text-caption text-muted mt-2">{totales.cobradas} ventas</p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-ds-3 mb-ds-5 max-w-3xl">
+        <Card className="p-ds-4">
+          <Text variant="caption">Entradas cobradas</Text>
+          <Text as="p" variant="title" className="text-success mt-ds-1">
+            S/ {totales.entradas.toFixed(2)}
+          </Text>
+          <Text variant="caption" className="mt-ds-2">
+            {totales.cobradas} ventas
+          </Text>
         </Card>
-        <Card className="p-4">
-          <p className="text-caption text-muted">Fiados del período</p>
-          <p className="text-[22px] font-semibold text-warning mt-1">S/ {totales.fiadosMonto.toFixed(2)}</p>
-          <p className="text-caption text-muted mt-2">{totales.fiadosN} no entran a caja</p>
+        <Card className="p-ds-4">
+          <Text variant="caption">Fiados del período</Text>
+          <Text as="p" variant="title" className="text-warning mt-ds-1">
+            S/ {totales.fiadosMonto.toFixed(2)}
+          </Text>
+          <Text variant="caption" className="mt-ds-2">
+            {totales.fiadosN} no entran a caja
+          </Text>
         </Card>
       </div>
 
-      <Card className="p-4">
-        <p className="text-[14px] font-medium mb-3">Ventas</p>
+      <Card className="p-ds-4">
+        <Text as="h2" variant="headline" className="mb-ds-3">
+          Ventas
+        </Text>
         {filtradas.length === 0 && !loading && (
-          <p className="text-slate-500 text-sm">No hay ventas en este período.</p>
+          <Text variant="caption">No hay ventas en este período.</Text>
         )}
         {filtradas.slice(0, 50).map((v, i) => (
           <div
             key={v.id || i}
-            className="flex justify-between items-center gap-2 border-t border-white/10 py-2 text-[13px]"
+            className="flex justify-between items-center gap-ds-2 border-t border-[rgb(var(--ds-color-border)_/_var(--ds-border-opacity))] py-ds-2"
           >
-            <span className="text-slate-400 flex items-center gap-2 min-w-0">
+            <Text as="span" variant="caption" className="flex items-center gap-ds-2 min-w-0">
               {v.createdAt
                 ? new Date(v.createdAt).toLocaleString('es-PE', {
                     day: '2-digit',
@@ -171,11 +181,13 @@ export default function FlujoCajaPage() {
                   })
                 : '—'}
               <Badge variant={esFiado(v.canal) ? 'warning' : 'default'}>{v.canal || '—'}</Badge>
-            </span>
-            <span className="max-w-[45%] truncate">{v.descripcion || 'Venta'}</span>
-            <span className={esFiado(v.canal) ? 'text-warning' : 'text-success'}>
+            </Text>
+            <Text as="span" variant="body" className="max-w-[45%] truncate">
+              {v.descripcion || 'Venta'}
+            </Text>
+            <Text as="span" variant="body" className={esFiado(v.canal) ? 'text-warning' : 'text-success'}>
               S/ {money(Number(v.montoTotal || 0)).toFixed(2)}
-            </span>
+            </Text>
           </div>
         ))}
       </Card>

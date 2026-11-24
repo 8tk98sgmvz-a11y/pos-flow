@@ -1,8 +1,8 @@
-export function Money({ value, color = 'text-white' }: { value: string; color?: string }) {
+export function Money({ value, color = 'text-foreground' }: { value: string; color?: string }) {
   return (
-    <h3 className={`text-[26px] md:text-[30px] font-bold tracking-tight font-mono leading-none ${color}`}>
-      <span className="mr-1 text-[0.82em] opacity-90">S/</span>
+    <p className={`text-title-1 font-mono leading-none tracking-tight ${color}`}>
+      <span className="mr-1 text-[0.72em] text-muted">S/</span>
       <span>{value}</span>
-    </h3>
+    </p>
   );
 }

@@ -1,3 +1,5 @@
+import { Input } from '@/components/ui';
+
 export function FlujoDateRange({
   desde,
   hasta,
@@ -10,19 +12,9 @@ export function FlujoDateRange({
   onHasta: (v: string) => void;
 }) {
   return (
-    <div className="flex gap-2 mb-4">
-      <input
-        type="date"
-        value={desde}
-        onChange={(e) => onDesde(e.target.value)}
-        className="bg-[#0B1220] border border-white/10 rounded-lg px-3 py-1.5 text-[13px]"
-      />
-      <input
-        type="date"
-        value={hasta}
-        onChange={(e) => onHasta(e.target.value)}
-        className="bg-[#0B1220] border border-white/10 rounded-lg px-3 py-1.5 text-[13px]"
-      />
+    <div className="flex gap-ds-2 mb-ds-4 max-w-md">
+      <Input type="date" value={desde} onChange={(e) => onDesde(e.target.value)} className="h-9" />
+      <Input type="date" value={hasta} onChange={(e) => onHasta(e.target.value)} className="h-9" />
     </div>
   );
 }
