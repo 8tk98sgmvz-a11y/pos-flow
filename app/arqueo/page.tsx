@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { ArqueoShell } from '@/components/dashboard/arqueo-shell';
-import { Badge, Button, Card, Input } from '@/components/ui';
+import { Badge, Button, Card, Input, Text } from '@/components/ui';
 import { onLiveRefresh } from '@/lib/refresh';
 
 type Arqueo = {
@@ -70,7 +70,7 @@ export default function ArqueoPage() {
 
   return (
     <ArqueoShell>
-      <Card className="p-5 max-w-md">
+      <Card className="p-ds-5 max-w-md">
         <Input
           value={contado}
           onChange={(e) => setContado(e.target.value)}
@@ -88,7 +88,9 @@ export default function ArqueoPage() {
         </Button>
         {ultimo ? (
           <div className="mt-4 pt-3 border-t border-[rgb(var(--ds-color-border)_/_var(--ds-border-opacity))] flex items-center justify-between">
-            <span className="text-[13px] text-muted">Último {soles(ultimo.declarado)}</span>
+            <Text as="span" variant="caption">
+              Último {soles(ultimo.declarado)}
+            </Text>
             <Badge variant={ultimo.diferencia === 0 ? 'success' : 'danger'}>
               {ultimo.diferencia >= 0 ? '+' : ''}
               {soles(ultimo.diferencia)}

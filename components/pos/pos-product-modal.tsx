@@ -1,5 +1,5 @@
 import type { ChangeEvent } from 'react';
-import { Button, Input } from '@/components/ui';
+import { Button, Input, Text } from '@/components/ui';
 import { PosModal } from './pos-modal';
 
 export function PosProductModal({
@@ -32,7 +32,9 @@ export function PosProductModal({
 }) {
   return (
     <PosModal>
-      <h2 className="text-base font-semibold">Nuevo producto</h2>
+      <Text as="h2" variant="headline">
+        Nuevo producto
+      </Text>
       <div className="space-y-3 mt-4">
         <Input value={nombre} onChange={(e) => onNombre(e.target.value)} placeholder="Nombre" />
         <div className="grid grid-cols-2 gap-2">

@@ -1,4 +1,4 @@
-import { Button, Card } from '@/components/ui';
+import { Button, Card, Text } from '@/components/ui';
 import { PosCartLine } from './pos-cart-line';
 import { PosEfectivoRecibido } from './pos-efectivo-recibido';
 import { PosPaymentMethods } from './pos-payment-methods';
@@ -38,7 +38,9 @@ export function PosCart({
   return (
     <Card className="p-4 lg:sticky lg:top-[4.5rem]">
       {carrito.length === 0 ? (
-        <p className="text-footnote text-subtle mb-3">Toca un producto</p>
+        <Text variant="caption" className="mb-ds-3">
+          Toca un producto
+        </Text>
       ) : (
         <div className="space-y-2 mb-4">
           {carrito.map((item) => (

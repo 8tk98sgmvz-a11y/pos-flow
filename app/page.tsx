@@ -4,21 +4,11 @@ import React, { useEffect, useState } from 'react';
 import { DashboardKpis } from '@/components/dashboard/dashboard-kpis';
 import { DashboardShell } from '@/components/dashboard/dashboard-shell';
 import { ButtonLink } from '@/components/ui';
-import { onLiveRefresh } from '@/lib/refresh';
-import {
-  emptyResumen,
-  fetchResumen,
-  readResumenCache,
-  writeResumenCache,
-  type Resumen,
-} from '@/lib/resumen-client';
+import { leerPendientes } from '@/lib/optimistic';
+import { emptyResumen, suscribirResumen, type Resumen } from '@/lib/resumen-client';
 
 export default function DashboardPage() {
   const [data, setData] = useState<Resumen>(emptyResumen);
-
-  useEffect(() => {
-    setData(readResumenCache());
-  }, []);
 
   useEffect(() => {
     if (localStorage.getItem('retailos_auth') !== '1') {
@@ -26,14 +16,7 @@ export default function DashboardPage() {
     }
   }, []);
 
-  useEffect(() => {
-    return onLiveRefresh(async () => {
-      const next = await fetchResumen();
-      if (!next) return;
-      setData(next);
-      writeResumenCache(next);
-    });
-  }, []);
+  useEffect(() => suscribirResumen(setData, leerPendientes), []);
 
   useEffect(() => {
     if (data.ventasHoy > 0 && !data.arqueoHoy) document.title = 'Contar caja · POS';
@@ -57,6 +40,7 @@ export default function DashboardPage() {
         cajon={data.cajon}
         digitalHoy={data.digitalHoy}
         ventasHoy={data.ventasHoy}
+        fiadosHoy={data.fiadosHoy}
         arqueoHoy={data.arqueoHoy}
         cxcTotal={data.cxcTotal}
         cxcN={data.cxcN}

@@ -1,91 +1,83 @@
 import { NextResponse } from 'next/server';
 import { get } from '@/lib/db';
 import { isolateAsync } from '@/lib/isolate';
-
-function n(row: unknown) {
-  return Number((row as { n?: number } | undefined)?.n || 0);
-}
+import { diaNegocio, money } from '@/lib/money';
 
 export const dynamic = 'force-dynamic';
 
+const LIMA = `CASE
+  WHEN "createdAt" ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}T'
+  THEN to_char(("createdAt")::timestamptz AT TIME ZONE 'America/Lima', 'YYYY-MM-DD')
+  ELSE NULL
+END`;
+
+type Fila = {
+  efectivo?: number | string;
+  digital?: number | string;
+  cobradas?: number | string;
+  fiados_n?: number | string;
+  ingresos?: number | string;
+  gastos_efectivo?: number | string;
+  cxc_total?: number | string;
+  cxc_n?: number | string;
+  cxp_total?: number | string;
+  cxp_n?: number | string;
+  arqueo_declarado?: number | string | null;
+  arqueo_diferencia?: number | string | null;
+};
+
 export async function GET() {
-  const day = new Date().toISOString().slice(0, 10);
-
-  const efectivo = await isolateAsync(0, async () =>
-    n(
-      await get(
-        `SELECT COALESCE(SUM("montoTotal"), 0) AS n FROM ventas
-         WHERE substr("createdAt", 1, 10) = ? AND upper(canal) = 'EFECTIVO'`,
-        [day]
-      )
-    )
-  );
-  const digitalHoy = await isolateAsync(0, async () =>
-    n(
-      await get(
-        `SELECT COALESCE(SUM("montoTotal"), 0) AS n FROM ventas
-         WHERE substr("createdAt", 1, 10) = ? AND upper(canal) IN ('YAPE', 'TARJETA')`,
-        [day]
-      )
-    )
-  );
-  const ingresos = await isolateAsync(0, async () =>
-    n(
-      await get(`SELECT COALESCE(SUM(monto), 0) AS n FROM ingresos WHERE substr("createdAt", 1, 10) = ?`, [day])
-    )
-  );
-  const gastos = await isolateAsync(0, async () =>
-    n(await get(`SELECT COALESCE(SUM(monto), 0) AS n FROM gastos WHERE substr("createdAt", 1, 10) = ?`, [day]))
-  );
-  const gastosEfectivo = await isolateAsync(0, async () =>
-    n(
-      await get(
-        `SELECT COALESCE(SUM(monto), 0) AS n FROM gastos
-         WHERE substr("createdAt", 1, 10) = ? AND upper(COALESCE(canal, 'EFECTIVO')) = 'EFECTIVO'`,
-        [day]
-      )
+  const day = diaNegocio();
+  const row = await isolateAsync(null, () =>
+    get<Fila>(
+      `SELECT
+         (SELECT COALESCE(SUM("montoTotal") FILTER (
+            WHERE upper(COALESCE(canal, 'EFECTIVO')) NOT IN ('YAPE', 'TARJETA', 'PLIN', 'FIADO')
+          ), 0)
+          FROM ventas WHERE ${LIMA} = ?) AS efectivo,
+         (SELECT COALESCE(SUM("montoTotal") FILTER (
+            WHERE upper(canal) IN ('YAPE', 'TARJETA', 'PLIN')
+          ), 0)
+          FROM ventas WHERE ${LIMA} = ?) AS digital,
+         (SELECT COUNT(*) FILTER (WHERE upper(COALESCE(canal, '')) <> 'FIADO')
+          FROM ventas WHERE ${LIMA} = ?) AS cobradas,
+         (SELECT COUNT(*) FILTER (WHERE upper(canal) = 'FIADO')
+          FROM ventas WHERE ${LIMA} = ?) AS fiados_n,
+         (SELECT COALESCE(SUM(monto), 0) FROM ingresos WHERE ${LIMA} = ?) AS ingresos,
+         (SELECT COALESCE(SUM(monto), 0) FROM gastos
+          WHERE ${LIMA} = ? AND upper(COALESCE(canal, 'EFECTIVO')) = 'EFECTIVO') AS gastos_efectivo,
+         (SELECT COALESCE(SUM(monto), 0) FROM cuentas_por_cobrar WHERE estado = 'ABIERTA') AS cxc_total,
+         (SELECT COUNT(*) FROM cuentas_por_cobrar WHERE estado = 'ABIERTA') AS cxc_n,
+         (SELECT COALESCE(SUM(monto), 0) FROM cuentas_por_pagar WHERE estado = 'ABIERTA') AS cxp_total,
+         (SELECT COUNT(*) FROM cuentas_por_pagar WHERE estado = 'ABIERTA') AS cxp_n,
+         (SELECT declarado FROM arqueos WHERE ${LIMA} = ? ORDER BY "createdAt" DESC LIMIT 1) AS arqueo_declarado,
+         (SELECT diferencia FROM arqueos WHERE ${LIMA} = ? ORDER BY "createdAt" DESC LIMIT 1) AS arqueo_diferencia`,
+      [day, day, day, day, day, day, day, day]
     )
   );
 
-  const cxc = await isolateAsync({ total: 0, n: 0 }, async () => {
-    const row = await get<{ total?: number | string; n?: number | string }>(
-      `SELECT COALESCE(SUM(monto), 0) AS total, COUNT(*) AS n
-       FROM cuentas_por_cobrar WHERE estado = 'ABIERTA'`
-    );
-    return { total: Number(row?.total || 0), n: Number(row?.n || 0) };
-  });
-
-  const cxp = await isolateAsync({ total: 0, n: 0 }, async () => {
-    const row = await get<{ total?: number | string; n?: number | string }>(
-      `SELECT COALESCE(SUM(monto), 0) AS total, COUNT(*) AS n
-       FROM cuentas_por_pagar WHERE estado = 'ABIERTA'`
-    );
-    return { total: Number(row?.total || 0), n: Number(row?.n || 0) };
-  });
-
-  const ventasHoy = await isolateAsync(0, async () =>
-    n(await get(`SELECT COUNT(*) AS n FROM ventas WHERE substr("createdAt", 1, 10) = ?`, [day]))
-  );
-  const arqueoHoy = await isolateAsync(null, async () => {
-    const row = await get<{ declarado?: number; diferencia?: number }>(
-      `SELECT declarado, diferencia, "createdAt" FROM arqueos
-       WHERE substr("createdAt", 1, 10) = ? ORDER BY "createdAt" DESC LIMIT 1`,
-      [day]
-    );
-    return row
-      ? { declarado: Number(row.declarado || 0), diferencia: Number(row.diferencia || 0) }
+  const efectivo = Number(row?.efectivo || 0);
+  const ingresos = Number(row?.ingresos || 0);
+  const gastosEfectivo = Number(row?.gastos_efectivo || 0);
+  const cajon = money(efectivo + ingresos - gastosEfectivo);
+  const arqueoHoy =
+    row && row.arqueo_declarado != null
+      ? {
+          declarado: Number(row.arqueo_declarado || 0),
+          diferencia: Number(row.arqueo_diferencia || 0),
+        }
       : null;
-  });
 
   return NextResponse.json({
-    cajon: Number((efectivo + ingresos - gastos).toFixed(2)),
-    digitalHoy: Number(digitalHoy.toFixed(2)),
-    sistema: Number((efectivo + ingresos - gastosEfectivo).toFixed(2)),
-    ventasHoy,
+    cajon,
+    digitalHoy: money(Number(row?.digital || 0)),
+    sistema: cajon,
+    ventasHoy: Number(row?.cobradas || 0),
+    fiadosHoy: Number(row?.fiados_n || 0),
     arqueoHoy,
-    cxcTotal: Number(Number(cxc.total || 0).toFixed(2)),
-    cxcN: Number(cxc.n || 0),
-    cxpTotal: Number(Number(cxp.total || 0).toFixed(2)),
-    cxpN: Number(cxp.n || 0),
+    cxcTotal: money(Number(row?.cxc_total || 0)),
+    cxcN: Number(row?.cxc_n || 0),
+    cxpTotal: money(Number(row?.cxp_total || 0)),
+    cxpN: Number(row?.cxp_n || 0),
   });
 }

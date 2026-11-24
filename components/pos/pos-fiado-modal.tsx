@@ -1,4 +1,4 @@
-import { Button, Input } from '@/components/ui';
+import { Button, Input, Text } from '@/components/ui';
 import { PosModal } from './pos-modal';
 
 export function PosFiadoModal({
@@ -20,8 +20,12 @@ export function PosFiadoModal({
 }) {
   return (
     <PosModal>
-      <h2 className="text-headline">Registrar fiado</h2>
-      <p className="text-caption text-muted mt-1">S/ {total.toFixed(2)} no entra a caja</p>
+      <Text as="h2" variant="headline">
+        Registrar fiado
+      </Text>
+      <Text variant="caption" className="mt-ds-1">
+        S/ {total.toFixed(2)} no entra a caja
+      </Text>
       <div className="space-y-3 mt-5">
         <Input
           autoFocus

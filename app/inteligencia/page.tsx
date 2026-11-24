@@ -1,9 +1,22 @@
 ﻿'use client';
 
 import React, { useEffect, useState } from 'react';
-import Link from 'next/link';
+import { AppShell } from '@/components/dashboard/dashboard-shell';
+import { Badge, Card, Text } from '@/components/ui';
 import { calcularAlertas, type Alerta } from '@/lib/alertas';
 import { onLive } from '@/lib/live';
+
+const nivelBadge: Record<Alerta['nivel'], 'danger' | 'warning' | 'success'> = {
+  rojo: 'danger',
+  ambar: 'warning',
+  ok: 'success',
+};
+
+const nivelEtiqueta: Record<Alerta['nivel'], string> = {
+  rojo: 'Atención',
+  ambar: 'Revisar',
+  ok: 'Al día',
+};
 
 export default function InteligenciaPage() {
   const [alertas, setAlertas] = useState<Alerta[]>([]);
@@ -23,34 +36,35 @@ export default function InteligenciaPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#070B14] text-white p-5">
-      <Link href="/" className="text-[12px] text-slate-400">← Resumen</Link>
-      <h1 className="text-[24px] font-semibold mt-1">Inteligencia</h1>
-      <p className="text-[13px] text-slate-400 mb-5">Sale de CxC, CxP, caja y el último arqueo. No se escribe a mano.</p>
+    <AppShell title="Inteligencia">
+      <Text variant="caption" className="mb-ds-5">
+        Sale de CxC, CxP, caja y el último arqueo. No se escribe a mano.
+      </Text>
 
-      <div className="space-y-3 max-w-2xl">
+      <div className="space-y-ds-3 max-w-2xl">
         {alertas.length === 0 && (
-          <div className="border border-emerald-500/30 bg-emerald-950/20 rounded-2xl p-4">
-            <p className="text-[15px] font-medium text-emerald-400">Sin alertas</p>
-            <p className="text-[13px] text-slate-400 mt-1">Fiados, deudas y arqueo están en cero.</p>
-          </div>
+          <Card className="p-ds-4">
+            <Badge variant="success">Al día</Badge>
+            <Text as="h2" variant="headline" className="mt-ds-2">
+              Sin alertas
+            </Text>
+            <Text variant="caption" className="mt-ds-1">
+              Fiados, deudas y arqueo están en cero.
+            </Text>
+          </Card>
         )}
         {alertas.map((a) => (
-          <div
-            key={a.id}
-            className={`rounded-2xl p-4 border ${
-              a.nivel === 'rojo'
-                ? 'border-red-500/40 bg-red-950/30'
-                : a.nivel === 'ambar'
-                ? 'border-amber-500/40 bg-amber-950/20'
-                : 'border-emerald-500/30 bg-emerald-950/20'
-            }`}
-          >
-            <p className="text-[15px] font-medium">{a.titulo}</p>
-            <p className="text-[13px] text-slate-300 mt-1">{a.detalle}</p>
-          </div>
+          <Card key={a.id} className="p-ds-4">
+            <Badge variant={nivelBadge[a.nivel]}>{nivelEtiqueta[a.nivel]}</Badge>
+            <Text as="h2" variant="headline" className="mt-ds-2">
+              {a.titulo}
+            </Text>
+            <Text variant="body" className="mt-ds-1 text-muted">
+              {a.detalle}
+            </Text>
+          </Card>
         ))}
       </div>
-    </div>
+    </AppShell>
   );
 }

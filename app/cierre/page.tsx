@@ -3,16 +3,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { onLive } from '@/lib/live';
+import { diaNegocio } from '@/lib/money';
 
 const RESERVA_MINIMA = 300;
-
-function hoyISO() {
-  const d = new Date();
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
-}
 
 function soles(n: number) {
   return `S/ ${Number(n || 0).toFixed(2)}`;
@@ -79,10 +72,10 @@ export default function CierrePage() {
   }, []);
 
   const d = useMemo(() => {
-    const day = hoyISO();
-    const ventas = ventasAll.filter((v) => String(v.createdAt || '').slice(0, 10) === day);
-    const gastos = cajaAll.filter((g) => String(g.createdAt || '').slice(0, 10) === day && (g.tipo === 'gasto' || !g.tipo));
-    const ingresos = cajaAll.filter((i) => String(i.createdAt || '').slice(0, 10) === day && i.tipo === 'ingreso');
+    const day = diaNegocio();
+    const ventas = ventasAll.filter((v) => diaNegocio(v.createdAt) === day);
+    const gastos = cajaAll.filter((g) => diaNegocio(g.createdAt) === day && g.tipo === 'gasto');
+    const ingresos = cajaAll.filter((i) => diaNegocio(i.createdAt) === day && i.tipo === 'ingreso');
 
     const vendido = ventas.reduce((a, v) => a + Number(v.montoTotal || 0), 0);
     const costo = ventas.reduce((a, v) => a + Number(v.costoTotal || 0), 0);
@@ -112,7 +105,7 @@ export default function CierrePage() {
     const yapeNeto = porCanal.YAPE - gastoYape;
 
     const ultimo = arqueosAll[0];
-    const arqueoHoy = ultimo && String(ultimo.createdAt || '').slice(0, 10) === day ? ultimo : null;
+    const arqueoHoy = ultimo && diaNegocio(ultimo.createdAt) === day ? ultimo : null;
     const cajonFisico = arqueoHoy ? Number(arqueoHoy.declarado || 0) : sistema;
     const descuadre = arqueoHoy ? Number(arqueoHoy.diferencia || 0) : 0;
 

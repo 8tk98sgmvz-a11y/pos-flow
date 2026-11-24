@@ -22,7 +22,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
         ref={ref}
         id={inputId}
         aria-invalid={error ? true : undefined}
-        className={`w-full h-10 rounded-ds-md bg-surface border px-ds-3 text-body text-foreground placeholder:text-subtle outline-none transition-shadow duration-ds ease-ds focus:border-primary focus:shadow-ds-focus ${
+        className={`w-full h-10 rounded-ds-md bg-surface border px-ds-3 text-body text-foreground placeholder:text-subtle outline-none transition-shadow duration-ds ease-ds focus:border-primary focus:shadow-ds-focus [color-scheme:dark] ${
           error
             ? 'border-danger/70'
             : 'border-[rgb(var(--ds-color-border)_/_var(--ds-border-opacity))]'

@@ -1,4 +1,5 @@
 import { apiSend } from '@/lib/live';
+import { diaNegocio } from '@/lib/money';
 import type { CanalPago, VentaPOS } from './types';
 
 const API = '/api/ventas';
@@ -42,10 +43,10 @@ export async function marcarVentaSettled(id: string): Promise<void> {
 }
 
 export async function ventasPorCanalHoy(canal: CanalPago): Promise<number> {
-  const hoy = new Date().toISOString().slice(0, 10);
+  const hoy = diaNegocio();
   const all = await listarVentas();
   return all
-    .filter((v) => String(v.createdAt || '').startsWith(hoy) && v.canal === canal)
+    .filter((v) => diaNegocio(v.createdAt) === hoy && v.canal === canal)
     .reduce((acc, v) => acc + Number(v.montoTotal || 0), 0);
 }
 

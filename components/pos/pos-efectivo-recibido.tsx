@@ -1,4 +1,4 @@
-import { Input } from '@/components/ui';
+import { Input, Text } from '@/components/ui';
 
 export function PosEfectivoRecibido({
   recibido,
@@ -25,9 +25,9 @@ export function PosEfectivoRecibido({
         placeholder="Recibido (vacío = exacto)"
       />
       {total > 0 && recibido.trim() !== '' && (
-        <p className={`text-[12px] mt-1 ${efectivoCorto ? 'text-danger' : 'text-success'}`}>
+        <Text variant="caption" className={`mt-ds-1 ${efectivoCorto ? 'text-danger' : 'text-success'}`}>
           {efectivoCorto ? `Faltan S/ ${(total - rec).toFixed(2)}` : `Vuelto S/ ${Math.max(0, vuelto).toFixed(2)}`}
-        </p>
+        </Text>
       )}
     </div>
   );
