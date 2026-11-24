@@ -1,6 +1,6 @@
 import { listarVentas } from '@/lib/ledger';
 import { listarGastos, listarIngresos } from '@/lib/caja';
-import { esCajon, esFiado, money } from '@/lib/money';
+import { diaNegocio, esCajon, money } from '@/lib/money';
 import { apiSend } from '@/lib/live';
 
 export type Arqueo = {
@@ -18,20 +18,20 @@ export async function efectivoEnCajon(): Promise<number> {
     listarIngresos(),
   ]);
 
-  const day = new Date().toISOString().slice(0, 10);
+  const day = diaNegocio();
 
   const ventasEfectivo = (Array.isArray(ventasRaw) ? ventasRaw : [])
-    .filter((v) => String(v.createdAt || '').slice(0, 10) === day)
-    .filter((v) => esCajon(v.canal) && !esFiado(v.canal))
+    .filter((v) => diaNegocio(v.createdAt) === day)
+    .filter((v) => esCajon(v.canal))
     .reduce((acc, v) => acc + Number(v.montoTotal || 0), 0);
 
   const gastosCajon = (Array.isArray(gastosRaw) ? gastosRaw : [])
-    .filter((g) => String(g.createdAt || '').slice(0, 10) === day)
+    .filter((g) => diaNegocio(g.createdAt) === day)
     .filter((g) => esCajon(g.canal))
     .reduce((acc, g) => acc + Number(g.monto || 0), 0);
 
   const ingresosCajon = (Array.isArray(ingresosRaw) ? ingresosRaw : [])
-    .filter((i) => String(i.createdAt || '').slice(0, 10) === day)
+    .filter((i) => diaNegocio(i.createdAt) === day)
     .reduce((acc, i) => acc + Number(i.monto || 0), 0);
 
   return money(ventasEfectivo + ingresosCajon - gastosCajon);

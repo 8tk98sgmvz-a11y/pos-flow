@@ -9,7 +9,8 @@ function fmt(n: number) {
 function cajaNota(
   ventasHoy: number,
   arqueoHoy: { declarado: number; diferencia: number } | null,
-  digitalHoy: number
+  digitalHoy: number,
+  fiadosHoy: number
 ) {
   if (ventasHoy > 0 && !arqueoHoy) return 'Falta contar caja';
   if (arqueoHoy && arqueoHoy.diferencia !== 0) {
@@ -17,13 +18,15 @@ function cajaNota(
     return d > 0 ? `Sobra S/ ${fmt(d)}` : `Falta S/ ${fmt(Math.abs(d))}`;
   }
   if (arqueoHoy) return 'Caja cuadrada';
-  return `Digital S/ ${fmt(digitalHoy)}`;
+  const fiados = fiadosHoy > 0 ? ` · ${fiadosHoy} fiados fuera` : '';
+  return `Digital S/ ${fmt(digitalHoy)}${fiados}`;
 }
 
 export function DashboardKpis({
   cajon,
   digitalHoy,
   ventasHoy,
+  fiadosHoy = 0,
   arqueoHoy,
   cxcTotal,
   cxcN,
@@ -33,13 +36,14 @@ export function DashboardKpis({
   cajon: number;
   digitalHoy: number;
   ventasHoy: number;
+  fiadosHoy?: number;
   arqueoHoy: { declarado: number; diferencia: number } | null;
   cxcTotal: number;
   cxcN: number;
   cxpTotal: number;
   cxpN: number;
 }) {
-  const notaCaja = cajaNota(ventasHoy, arqueoHoy, digitalHoy);
+  const notaCaja = cajaNota(ventasHoy, arqueoHoy, digitalHoy, fiadosHoy);
   const cajaAlerta = (ventasHoy > 0 && !arqueoHoy) || (arqueoHoy != null && arqueoHoy.diferencia !== 0);
 
   return (

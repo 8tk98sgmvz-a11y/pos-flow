@@ -1,4 +1,4 @@
-import { money, pct } from '@/lib/money';
+import { esFiado, money, pct } from '@/lib/money';
 
 export type ResumenPnl = {
   ventas: number;
@@ -26,11 +26,11 @@ export async function resumenPnl(): Promise<ResumenPnl> {
     fetchArr<{ monto?: number; tipo?: string }>('/api/caja'),
   ]);
 
-  const cobradas = ventas.filter((v) => String(v.canal || '').toUpperCase() !== 'FIADO');
+  const cobradas = ventas.filter((v) => !esFiado(v.canal));
   const ventasT = money(cobradas.reduce((a, v) => a + Number(v.montoTotal || 0), 0));
   const costo = money(cobradas.reduce((a, v) => a + Number(v.costoTotal || 0), 0));
   const gastos = money(
-    caja.filter((x) => x.tipo === 'gasto' || !x.tipo).reduce((a, g) => a + Number(g.monto || 0), 0)
+    caja.filter((x) => x.tipo === 'gasto').reduce((a, g) => a + Number(g.monto || 0), 0)
   );
   const utilidadBruta = money(ventasT - costo);
   const utilidadNeta = money(utilidadBruta - gastos);

@@ -6,7 +6,8 @@ import { FlujoPageHeader } from '@/components/dashboard/flujo-page-header';
 import { FlujoShell } from '@/components/dashboard/flujo-shell';
 import { Badge, Button, Card } from '@/components/ui';
 import { onLive } from '@/lib/live';
-import { esFiado, money } from '@/lib/money';
+import { leerPendientes } from '@/lib/optimistic';
+import { cuadrarVentas, diaNegocio, esFiado, money } from '@/lib/money';
 
 type Venta = {
   id?: string;
@@ -30,89 +31,85 @@ async function leerApi(): Promise<Venta[]> {
   }
 }
 
-function esHoy(iso?: string) {
-  if (!iso) return false;
-  const d = new Date(iso);
-  const now = new Date();
-  return (
-    d.getFullYear() === now.getFullYear() &&
-    d.getMonth() === now.getMonth() &&
-    d.getDate() === now.getDate()
-  );
-}
-
-function esAyer(iso?: string) {
-  if (!iso) return false;
-  const d = new Date(iso);
-  const ayer = new Date();
-  ayer.setDate(ayer.getDate() - 1);
-  return (
-    d.getFullYear() === ayer.getFullYear() &&
-    d.getMonth() === ayer.getMonth() &&
-    d.getDate() === ayer.getDate()
-  );
-}
-
-function esMes(iso?: string) {
-  if (!iso) return false;
-  const d = new Date(iso);
-  const now = new Date();
-  return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
-}
-
-function enRango(iso?: string, desde?: string, hasta?: string) {
-  if (!iso || !desde || !hasta) return false;
-  const d = new Date(iso).getTime();
-  const ini = new Date(desde).getTime();
-  const fin = new Date(hasta + 'T23:59:59').getTime();
-  return d >= ini && d <= fin;
+function diaAtras(dias: number) {
+  const hoy = diaNegocio();
+  const [y, m, d] = hoy.split('-').map(Number);
+  return diaNegocio(new Date(Date.UTC(y, m - 1, d - dias, 17)));
 }
 
 export default function FlujoCajaPage() {
   const [ventas, setVentas] = useState<Venta[]>([]);
   const [loading, setLoading] = useState(true);
+  const [tick, setTick] = useState(0);
   const [filtro, setFiltro] = useState<Filtro>('hoy');
   const [desde, setDesde] = useState('');
   const [hasta, setHasta] = useState('');
 
-  const cargar = async () => {
-    const api = await leerApi();
-    const ordenadas = api.sort((a, b) =>
-      String(b.createdAt || '').localeCompare(String(a.createdAt || ''))
-    );
-    setVentas(ordenadas);
-    setLoading(false);
-  };
-
   useEffect(() => {
-    cargar();
-    const stop = onLive(() => void cargar());
-    const id = setInterval(cargar, 2000);
+    let seq = 0;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const cargar = async () => {
+      const id = ++seq;
+      const api = await leerApi();
+      if (id !== seq) return;
+      setVentas(api);
+      setLoading(false);
+    };
+    const schedule = () => {
+      if (leerPendientes().length) setTick((n) => n + 1);
+      clearTimeout(timer);
+      timer = setTimeout(() => void cargar(), 80);
+    };
+    void cargar();
+    const stop = onLive(schedule);
     return () => {
+      clearTimeout(timer);
       stop();
-      clearInterval(id);
     };
   }, []);
 
-  const filtradas = useMemo(() => {
-    if (filtro === 'todo') return ventas;
-    if (filtro === 'hoy') return ventas.filter((v) => esHoy(v.createdAt));
-    if (filtro === 'ayer') return ventas.filter((v) => esAyer(v.createdAt));
-    if (filtro === 'mes') return ventas.filter((v) => esMes(v.createdAt));
-    if (filtro === 'rango') return ventas.filter((v) => enRango(v.createdAt, desde, hasta));
-    return ventas;
-  }, [ventas, filtro, desde, hasta]);
+  const conPendientes = useMemo(() => {
+    const ids = new Set(ventas.map((v) => v.id));
+    const extra = leerPendientes()
+      .filter((p) => !ids.has(p.id))
+      .map((p) => ({
+        id: p.id,
+        createdAt: p.createdAt,
+        montoTotal: p.montoTotal,
+        canal: p.canal,
+        descripcion: p.descripcion,
+      }));
+    return [...extra, ...ventas].sort((a, b) =>
+      String(b.createdAt || '').localeCompare(String(a.createdAt || ''))
+    );
+  }, [ventas, tick]);
 
-  const totales = useMemo(() => {
-    const cobradas = filtradas.filter((v) => !esFiado(v.canal));
-    const entradas = money(cobradas.reduce((acc, v) => acc + Number(v.montoTotal || 0), 0));
-    return { entradas, count: cobradas.length };
-  }, [filtradas]);
+  const filtradas = useMemo(() => {
+    const hoy = diaNegocio();
+    const ayer = diaAtras(1);
+    const mes = hoy.slice(0, 7);
+    return conPendientes.filter((v) => {
+      if (filtro === 'todo') return true;
+      const dia = diaNegocio(v.createdAt);
+      if (!dia) return false;
+      if (filtro === 'hoy') return dia === hoy;
+      if (filtro === 'ayer') return dia === ayer;
+      if (filtro === 'mes') return dia.slice(0, 7) === mes;
+      if (filtro === 'rango') return Boolean(desde && hasta && dia >= desde && dia <= hasta);
+      return true;
+    });
+  }, [conPendientes, filtro, desde, hasta]);
+
+  const totales = useMemo(() => cuadrarVentas(filtradas), [filtradas]);
 
   return (
     <FlujoShell>
       <FlujoPageHeader
-        subtitle={loading ? 'Cargando…' : `${totales.count} ventas · S/ ${totales.entradas.toFixed(2)}`}
+        subtitle={
+          loading
+            ? 'Cargando…'
+            : `${totales.movimientos} movimientos · ${totales.cobradas} cobradas · ${totales.fiadosN} fiados`
+        }
       />
 
       <div className="flex flex-wrap gap-2 mb-4">
@@ -140,10 +137,16 @@ export default function FlujoCajaPage() {
         <FlujoDateRange desde={desde} hasta={hasta} onDesde={setDesde} onHasta={setHasta} />
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5 max-w-3xl">
         <Card className="p-4">
-          <p className="text-[12px] text-slate-400">Entradas</p>
-          <p className="text-[22px] font-semibold text-emerald-400">S/ {totales.entradas.toFixed(2)}</p>
+          <p className="text-caption text-muted">Entradas cobradas</p>
+          <p className="text-[22px] font-semibold text-success mt-1">S/ {totales.entradas.toFixed(2)}</p>
+          <p className="text-caption text-muted mt-2">{totales.cobradas} ventas</p>
+        </Card>
+        <Card className="p-4">
+          <p className="text-caption text-muted">Fiados del período</p>
+          <p className="text-[22px] font-semibold text-warning mt-1">S/ {totales.fiadosMonto.toFixed(2)}</p>
+          <p className="text-caption text-muted mt-2">{totales.fiadosN} no entran a caja</p>
         </Card>
       </div>
 
@@ -167,10 +170,12 @@ export default function FlujoCajaPage() {
                     minute: '2-digit',
                   })
                 : '—'}
-              <Badge variant="default">{v.canal || '—'}</Badge>
+              <Badge variant={esFiado(v.canal) ? 'warning' : 'default'}>{v.canal || '—'}</Badge>
             </span>
             <span className="max-w-[45%] truncate">{v.descripcion || 'Venta'}</span>
-            <span className="text-emerald-400">S/ {Number(v.montoTotal || 0).toFixed(2)}</span>
+            <span className={esFiado(v.canal) ? 'text-warning' : 'text-success'}>
+              S/ {money(Number(v.montoTotal || 0)).toFixed(2)}
+            </span>
           </div>
         ))}
       </Card>

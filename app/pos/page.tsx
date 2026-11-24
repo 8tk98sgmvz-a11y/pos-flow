@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { registrarFiado } from '@/lib/cxc';
 import { pingLive } from '@/lib/live';
+import { anotarPendiente, quitarPendiente } from '@/lib/optimistic';
 import { isolateAsync } from '@/lib/isolate';
 import { money } from '@/lib/money';
 import { runAfterSale } from '@/lib/pos-after-sale';
@@ -287,13 +288,23 @@ export default function PosScreen() {
     );
   };
 
-  const postVenta = async (canal: string, descripcion: string, items: CartItem[]) => {
+  const postVenta = async (
+    id: string,
+    createdAt: string,
+    canal: string,
+    descripcion: string,
+    items: CartItem[],
+    montoTotal: number,
+    costo: number
+  ) => {
     const res = await fetch('/api/ventas', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        montoTotal: total,
-        costoTotal,
+        id,
+        createdAt,
+        montoTotal,
+        costoTotal: costo,
         canal,
         descripcion,
         items: items.map((i) => ({
@@ -360,19 +371,24 @@ export default function PosScreen() {
     };
     lastTicket.current = snap;
     const descripcion = items.map((i) => `${i.nombre} x${i.quantity}`).join(', ');
+    const ventaId = `v-${Date.now()}`;
+    const createdAt = new Date().toISOString();
+    const canal = toCanal(metodoPago);
 
     busy.current = true;
     setCarrito([]);
     setRecibido('');
     bajarStockLocal(items);
+    anotarPendiente({ id: ventaId, createdAt, montoTotal: total, canal, descripcion });
     setToast(`Cobrado S/ ${total.toFixed(2)}`);
 
     try {
-      await postVenta(toCanal(metodoPago), descripcion, items);
-      pingLive();
+      await postVenta(ventaId, createdAt, canal, descripcion, items, total, costoTotal);
+      quitarPendiente(ventaId);
       runAfterSale(items);
     } catch (e) {
       console.error(e);
+      quitarPendiente(ventaId);
       setCarrito(items);
       void cargarProductos();
       setToast('Error al guardar la venta');
@@ -394,6 +410,8 @@ export default function PosScreen() {
     const cliente = clienteFiado;
     const tel = telFiado;
     const descripcion = items.map((i) => `${i.nombre} x${i.quantity}`).join(', ');
+    const ventaId = `v-${Date.now()}`;
+    const createdAt = new Date().toISOString();
 
     busy.current = true;
     setCarrito([]);
@@ -401,25 +419,45 @@ export default function PosScreen() {
     setClienteFiado('');
     setTelFiado('');
     bajarStockLocal(items);
+    anotarPendiente({
+      id: ventaId,
+      createdAt,
+      montoTotal: total,
+      canal: 'FIADO',
+      descripcion: `FIADO ${cliente}`,
+    });
     setToast('Fiado registrado · no entra a caja');
 
+    let ventaOk = false;
     try {
-      const data = await postVenta('FIADO', `FIADO ${cliente} · ${items.map((i) => i.nombre).join(', ')}`, items);
-      await isolateAsync(undefined, () =>
-        registrarFiado({
-          cliente,
-          descripcion,
-          monto: total,
-          ventaId: data?.id || '',
-          telefono: tel,
-        })
+      await postVenta(
+        ventaId,
+        createdAt,
+        'FIADO',
+        `FIADO ${cliente} · ${items.map((i) => i.nombre).join(', ')}`,
+        items,
+        total,
+        costoTotal
       );
-      pingLive();
+      ventaOk = true;
+      await registrarFiado({
+        cliente,
+        descripcion,
+        monto: total,
+        ventaId,
+        telefono: tel,
+      });
+      quitarPendiente(ventaId);
       runAfterSale(items);
     } catch {
-      setCarrito(items);
-      void cargarProductos();
-      setToast('Error al guardar el fiado');
+      quitarPendiente(ventaId);
+      if (!ventaOk) {
+        setCarrito(items);
+        void cargarProductos();
+        setToast('Error al guardar el fiado');
+      } else {
+        setToast('La venta quedó fiada, pero la deuda no se anotó');
+      }
     } finally {
       busy.current = false;
       setSearchTerm('');

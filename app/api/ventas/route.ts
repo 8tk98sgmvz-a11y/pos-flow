@@ -18,8 +18,11 @@ export async function POST(request: Request) {
     const body = await request.json().catch(() => ({}));
     const { montoTotal, costoTotal, canal, descripcion, items } = body;
 
-    const id = `v-${Date.now()}`;
-    const createdAt = new Date().toISOString();
+    const id = String(body.id || '').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 40) || `v-${Date.now()}`;
+    const createdAt =
+      typeof body.createdAt === 'string' && !Number.isNaN(Date.parse(body.createdAt))
+        ? body.createdAt
+        : new Date().toISOString();
     const round = (n: number) => Math.round((Number(n) || 0) * 100) / 100;
 
     await transaction(async (tx) => {

@@ -49,7 +49,8 @@ export async function registrarFiado(input: {
   };
 
   const { apiSend } = await import('@/lib/live');
-  await apiSend('/api/cxc', 'POST', row);
+  const res = await apiSend('/api/cxc', 'POST', row);
+  if (!res.ok) throw new Error('No se anotó el fiado');
 
   return row;
 }
